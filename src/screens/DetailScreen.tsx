@@ -1,11 +1,12 @@
 // src/screens/DetailScreen.tsx
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
 import { theme } from '../theme';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import UnityView from '@azesmway/react-native-unity';
 
 type DetailScreenRouteProp = RouteProp<RootStackParamList, 'Detail'>;
 type DetailScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Detail'>;
@@ -17,10 +18,24 @@ interface Props {
 
 export default function DetailScreen({ route, navigation }: Props) {
     const { compound } = route.params;
+    const unityRef = useRef<any>(null);
 
     const handleDocking = () => {
         Alert.alert("开始对接", `正在将 ${compound.name} 发送至 Vina 引擎...`, [{ text: "确定" }]);
         // 这里后续将调用 POST /api/docking/start
+    };
+
+    // Unity 消息处理
+    const handleUnityMessage = (message: string) => {
+        console.log('Unity 消息:', message);
+        // 可以在这里处理 Unity 发来的消息
+    };
+
+    // 发送消息到 Unity
+    const sendToUnity = (gameObject: string, method: string, message: string) => {
+        if (unityRef.current) {
+            unityRef.current.postMessage(gameObject, method, message);
+        }
     };
 
     return (
@@ -36,13 +51,28 @@ export default function DetailScreen({ route, navigation }: Props) {
 
             <ScrollView contentContainerStyle={styles.content}>
 
-                {/* 2. 3D 可视化区域 (Unity 占位) */}
+                {/* 2. 3D 可视化区域 (Unity) */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>3D 分子结构 (Unity)</Text>
-                    <View style={styles.unityPlaceholder}>
-                        <MaterialCommunityIcons name="cube-scan" size={48} color={theme.colors.primary} />
-                        <Text style={styles.placeholderText}>Unity 3D 模型加载区域</Text>
-                        <Text style={styles.subText}>将在第三阶段集成 .pdbqt 文件解析</Text>
+                    <View style={styles.titleRow}>
+                        <Text style={styles.sectionTitle}>3D 蛋白质-配体复合物</Text>
+                        <TouchableOpacity 
+                            style={styles.controlButton}
+                            onPress={() => sendToUnity('GameManager', 'ResetCamera', '')}
+                        >
+                            <MaterialCommunityIcons name="refresh" size={18} color={theme.colors.primary} />
+                            <Text style={styles.controlText}>重置视角</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.unityContainer}>
+                        <UnityView
+                            ref={unityRef}
+                            style={styles.unityView}
+                            onUnityMessage={handleUnityMessage}
+                        />
+                    </View>
+                    <View style={styles.unityHint}>
+                        <MaterialCommunityIcons name="gesture-swipe" size={16} color={theme.colors.text.light} />
+                        <Text style={styles.hintText}>拖动旋转 · 双指缩放 · 查看蛋白质拼接效果</Text>
                     </View>
                 </View>
 
@@ -110,9 +140,32 @@ const styles = StyleSheet.create({
     content: { padding: 16, paddingBottom: 40 },
     section: { marginBottom: 24 },
     sectionTitle: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: theme.colors.primary, paddingLeft: 8 },
-    unityPlaceholder: {
-        height: 200, backgroundColor: '#E0F2F1', borderRadius: 16,
-        justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 2, borderColor: '#B2DFDB'
+    titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    controlButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, ...theme.shadows.soft },
+    controlText: { fontSize: 12, color: theme.colors.primary, marginLeft: 4, fontWeight: '600' },
+    unityContainer: {
+        height: 300,
+        backgroundColor: '#000',
+        borderRadius: 16,
+        overflow: 'hidden',
+        ...theme.shadows.strong
+    },
+    unityView: {
+        flex: 1,
+        width: '100%',
+        height: '100%'
+    },
+    unityHint: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 8,
+        gap: 6
+    },
+    hintText: {
+        fontSize: 12,
+        color: theme.colors.text.light,
+        fontStyle: 'italic'
     },
     chartPlaceholder: {
         height: 180, backgroundColor: '#FFF3E0', borderRadius: 16,

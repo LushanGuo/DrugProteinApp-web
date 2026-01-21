@@ -36,6 +36,6 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
-# /ios
-# /android  # 注释掉，因为需要手动修改 Android 项目以集成 Unity
+# generated native folders (方案 B: 需要手动修改，所以要追踪)
+/ios
+# /android  # 需要手动集成 Unity，所以要提交到 Git
