@@ -2,11 +2,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
     View, Text, FlatList, StyleSheet, TextInput,
-    ActivityIndicator, ScrollView, TouchableOpacity, StatusBar
+    ActivityIndicator, ScrollView, TouchableOpacity, StatusBar, Alert
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Compound, RootStackParamList } from '../types';
-import { compoundAPI } from '../services/api';
+import { compoundAPI, authAPI } from '../services/api';
 import { CompoundCard } from '../components/CompoundCard';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../theme';
@@ -31,15 +31,33 @@ export default function HomeScreen({ navigation }: Props) {
     const loadData = async () => {
         try {
             setLoading(true);
-            // 使用新的 API 接口获取所有化合物
-            const data = await compoundAPI.getAllCompounds(100);
-            setCompounds(data);
+            // 使用后端分页接口获取化合物列表
+            const response = await compoundAPI.getList(0, 100); // 获取前100条
+            setCompounds(response.data.content);
         } catch (e) {
             console.error('加载失败:', e);
             // 实际项目中可添加 Toast 提示
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleLogout = () => {
+        Alert.alert(
+            '退出登录',
+            '确定要退出当前账号吗？',
+            [
+                { text: '取消', style: 'cancel' },
+                {
+                    text: '退出',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await authAPI.logout();
+                        navigation.replace('Login');
+                    }
+                }
+            ]
+        );
     };
 
     // 内存中过滤，保证极速响应
@@ -59,7 +77,7 @@ export default function HomeScreen({ navigation }: Props) {
             {/* 1. 顶部 Header */}
             <View style={styles.headerBg}>
                 <View style={styles.headerContent}>
-                    <View>
+                    <View style={{ flex: 1 }}>
                         <Text style={styles.appTitle}>乳腺癌药物筛选平台</Text>
                         <Text style={styles.appSubtitle}>Target: CDK2 / 1e9h</Text>
                     </View>
@@ -67,6 +85,13 @@ export default function HomeScreen({ navigation }: Props) {
                         <Text style={styles.countText}>{compounds.length}</Text>
                         <Text style={styles.countLabel}>分子库</Text>
                     </View>
+                    <TouchableOpacity 
+                        style={styles.logoutButton}
+                        onPress={handleLogout}
+                        activeOpacity={0.7}
+                    >
+                        <MaterialCommunityIcons name="logout" size={22} color="white" />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -142,9 +167,25 @@ const styles = StyleSheet.create({
     headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     appTitle: { fontSize: 20, fontWeight: 'bold', color: 'white' },
     appSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
-    countBadge: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)', padding: 8, borderRadius: 8 },
+    countBadge: { 
+        alignItems: 'center', 
+        backgroundColor: 'rgba(0,0,0,0.1)', 
+        padding: 8, 
+        borderRadius: 8,
+        marginRight: 12,
+    },
     countText: { fontSize: 18, fontWeight: 'bold', color: '#FFF' },
     countLabel: { fontSize: 10, color: 'rgba(255,255,255,0.8)' },
+    logoutButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
     searchWrapper: { marginTop: -25, paddingHorizontal: 20, marginBottom: 10 },
     searchBar: {
         flexDirection: 'row', alignItems: 'center', backgroundColor: 'white',

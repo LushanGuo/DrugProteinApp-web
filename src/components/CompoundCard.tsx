@@ -12,7 +12,8 @@ interface Props {
 
 export const CompoundCard: React.FC<Props> = ({ item, onPress }) => {
     // 模拟状态 (如果后端还没返回 status 字段，默认为 PENDING)
-    const status = item.status || 'PENDING';
+    // const status = item.status || 'PENDING';
+    const status = 'PENDING'; // 临时固定值，等待后端添加 status 字段
 
     // 获取状态对应的颜色和文字
     const getStatusConfig = (s: string) => {

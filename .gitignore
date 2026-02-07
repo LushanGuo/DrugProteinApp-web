@@ -1,41 +1,58 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
-expo-env.d.ts
 
 # Native
-.kotlin/
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
 
 # Metro
 .metro-health-check*
 
-# debug
+# Debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
-# macOS
+# OS
 .DS_Store
 *.pem
+Thumbs.db
 
-# local env files
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Env files
+.env
 .env*.local
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 
-# generated native folders (方案 B: 需要手动修改，所以要追踪)
-/ios
-# /android  # 需要手动集成 Unity，所以要提交到 Git
+# Testing
+coverage/
+
+# Build
+build/
+android/
+ios/

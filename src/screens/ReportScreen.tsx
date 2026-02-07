@@ -15,7 +15,17 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, ScoringResult } from '../types';
 import { theme } from '../theme';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { compoundAPI } from '../services/api';
+import { analysisAPI, admetAPI } from '../services/api';
+import { AdmetResult } from '../types/api';
+import { 
+    getRadarData, 
+    getHergRiskLevel, 
+    getAmesDescription, 
+    getLiverToxicityDescription,
+    getAbsorptionDescription,
+    getMetabolismDescription,
+    getAdmetOverallAssessment 
+} from '../utils/admetUtils';
 
 type ReportScreenRouteProp = RouteProp<RootStackParamList, 'Report'>;
 type ReportScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Report'>;
@@ -31,21 +41,26 @@ export default function ReportScreen({ route, navigation }: Props) {
     const [result, setResult] = useState<ScoringResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [progressAnim] = useState(new Animated.Value(0));
+    
+    // ADMET 预测状态
+    const [admetLoading, setAdmetLoading] = useState(false);
+    const [admetResult, setAdmetResult] = useState<AdmetResult | null>(null);
 
     useEffect(() => {
         fetchAnalysis();
+        fetchAdmetResult(); // 尝试获取已有的ADMET结果
     }, [compoundId]);
 
     const fetchAnalysis = async () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await compoundAPI.calculateScore(compoundId);
-            setResult(data);
+            const response = await analysisAPI.calculateScore(compoundId);
+            setResult(response.data);
             
             // 启动进度条动画
             Animated.timing(progressAnim, {
-                toValue: data.totalScore,
+                toValue: response.data.totalScore,
                 duration: 1500,
                 useNativeDriver: false,
             }).start();
@@ -55,6 +70,38 @@ export default function ReportScreen({ route, navigation }: Props) {
             Alert.alert('错误', '无法获取分析结果，请稍后重试');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // 获取已有的ADMET结果
+    const fetchAdmetResult = async () => {
+        try {
+            const response = await admetAPI.getResultByCompoundId(compoundId);
+            if (response.success && response.data) {
+                setAdmetResult(response.data);
+            }
+        } catch (error) {
+            console.log('暂无ADMET预测结果');
+        }
+    };
+
+    // 执行ADMET预测
+    const handleAdmetPredict = async () => {
+        try {
+            setAdmetLoading(true);
+            const response = await admetAPI.predict(compoundId);
+            
+            if (response.success && response.data) {
+                setAdmetResult(response.data);
+                Alert.alert('预测完成', 'ADMET毒性预测已完成');
+            } else {
+                Alert.alert('预测失败', response.message || '无法完成ADMET预测');
+            }
+        } catch (error: any) {
+            console.error('ADMET预测失败:', error);
+            Alert.alert('错误', error.response?.data?.message || 'ADMET预测失败');
+        } finally {
+            setAdmetLoading(false);
         }
     };
 
@@ -106,57 +153,6 @@ export default function ReportScreen({ route, navigation }: Props) {
         );
     }
 
-    // --- 熔断状态展示 ---
-    if (result.isVetoed) {
-        return (
-            <View style={[styles.container, { backgroundColor: '#FFEBEE' }]}>
-                <View style={styles.navBarVeto}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="white" />
-                    </TouchableOpacity>
-                    <View style={styles.navTitleContainer}>
-                        <Text style={styles.navTitle}>分析报告 (已终止)</Text>
-                        <Text style={styles.navSubtitle}>{compoundName}</Text>
-                    </View>
-                    <View style={{ width: 24 }} />
-                </View>
-
-                <ScrollView contentContainerStyle={styles.vetoContainer}>
-                    <MaterialCommunityIcons name="alert-octagon" size={100} color="#D32F2F" />
-                    <Text style={styles.vetoTitle}>⛔ 触发安全熔断</Text>
-                    <Text style={styles.vetoScore}>0</Text>
-                    <Text style={styles.vetoSubtitle}>该分子存在严重安全性风险</Text>
-
-                    {/* 熔断标签 */}
-                    <View style={styles.vetoTagsContainer}>
-                        {result.adviceTags.map((tag, index) => (
-                            <View key={index} style={styles.vetoTag}>
-                                <Text style={styles.vetoTagText}>{tag}</Text>
-                            </View>
-                        ))}
-                    </View>
-
-                    {/* 专家警告卡片 */}
-                    <View style={styles.vetoCard}>
-                        <View style={styles.vetoCardHeader}>
-                            <MaterialCommunityIcons name="shield-alert" size={24} color="#D32F2F" />
-                            <Text style={styles.vetoCardTitle}>专家警告</Text>
-                        </View>
-                        <Text style={styles.vetoAdviceText}>{result.expertAdvice}</Text>
-                    </View>
-
-                    {/* 返回按钮 */}
-                    <TouchableOpacity 
-                        style={styles.vetoBackButton} 
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={styles.vetoBackButtonText}>返回化合物列表</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-            </View>
-        );
-    }
-
     // --- 正常评分展示 ---
     return (
         <View style={styles.container}>
@@ -193,7 +189,7 @@ export default function ReportScreen({ route, navigation }: Props) {
                         icon="flash"
                     />
                     <StatBox 
-                        label="安全" 
+                        label="安全性" 
                         sublabel="35%" 
                         value={result.safetyScore} 
                         max={35} 
@@ -201,7 +197,7 @@ export default function ReportScreen({ route, navigation }: Props) {
                         icon="shield-check"
                     />
                     <StatBox 
-                        label="成药" 
+                        label="类药性" 
                         sublabel="20%" 
                         value={result.druglikenessScore} 
                         max={20} 
@@ -210,33 +206,183 @@ export default function ReportScreen({ route, navigation }: Props) {
                     />
                 </View>
 
-                {/* 3. 智能标签 */}
+                {/* 3. 优点标签 */}
+                {result.adviceTags && result.adviceTags.length > 0 && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <MaterialCommunityIcons name="check-circle" size={24} color="#4CAF50" />
+                            <Text style={styles.sectionTitle}>优势特征</Text>
+                        </View>
+                        <View style={styles.tagsContainer}>
+                            {result.adviceTags.map((tag, index) => (
+                                <View key={index} style={styles.goodTag}>
+                                    <Text style={styles.goodTagText}>{tag}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {/* 4. 缺点标签 - 如果被一票否决则显示 */}
+                {result.vetoed && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <MaterialCommunityIcons name="alert-circle" size={24} color="#FF9800" />
+                            <Text style={styles.sectionTitle}>需要关注</Text>
+                        </View>
+                        <View style={styles.tagsContainer}>
+                            <View style={styles.badTag}>
+                                <Text style={styles.badTagText}>一票否决</Text>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
+                {/* 4.5. ADMET 毒性预测 */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <MaterialCommunityIcons name="tag-multiple" size={24} color={theme.colors.primary} />
-                        <Text style={styles.sectionTitle}>智能标签</Text>
+                        <MaterialCommunityIcons name="flask" size={24} color="#FF6F00" />
+                        <Text style={styles.sectionTitle}>ADMET 毒性预测</Text>
                     </View>
-                    <View style={styles.tagsContainer}>
-                        {result.adviceTags.map((tag, index) => (
-                            <View key={index} style={styles.tag}>
-                                <Text style={styles.tagText}>{tag}</Text>
+                    
+                    {!admetResult ? (
+                        <View style={styles.admetPlaceholder}>
+                            <MaterialCommunityIcons name="test-tube" size={48} color="#FFA726" />
+                            <Text style={styles.placeholderText}>尚未进行 ADMET 预测</Text>
+                            <TouchableOpacity 
+                                style={styles.predictButton} 
+                                onPress={handleAdmetPredict}
+                                disabled={admetLoading}
+                                activeOpacity={0.8}
+                            >
+                                {admetLoading ? (
+                                    <ActivityIndicator color="white" size="small" />
+                                ) : (
+                                    <>
+                                        <MaterialCommunityIcons name="play" size={18} color="white" style={{ marginRight: 6 }} />
+                                        <Text style={styles.predictButtonText}>开始预测</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={styles.admetCard}>
+                            {/* ADMET 综合评价 */}
+                            {(() => {
+                                const assessment = getAdmetOverallAssessment(admetResult);
+                                return (
+                                    <View style={[styles.assessmentBanner, { backgroundColor: assessment.color + '20', borderColor: assessment.color }]}>
+                                        <Text style={[styles.assessmentGrade, { color: assessment.color }]}>
+                                            {assessment.grade}
+                                        </Text>
+                                        <Text style={styles.assessmentScore}>
+                                            综合安全性评分: {assessment.score.toFixed(1)}
+                                        </Text>
+                                        <Text style={styles.assessmentRecommendation}>
+                                            {assessment.recommendation}
+                                        </Text>
+                                    </View>
+                                );
+                            })()}
+                            
+                            {/* ADMET 指标详情 */}
+                            <View style={styles.admetMetrics}>
+                                {(() => {
+                                    const hergRisk = getHergRiskLevel(admetResult.hergToxicity);
+                                    return (
+                                        <AdmetMetric 
+                                            label="心脏安全性" 
+                                            value={(1 - admetResult.hergToxicity) * 100}
+                                            unit="%"
+                                            icon="heart-pulse"
+                                            color={hergRisk.color}
+                                            description={`${hergRisk.level} - ${hergRisk.description}`}
+                                        />
+                                    );
+                                })()}
+                                
+                                {(() => {
+                                    const amesDesc = getAmesDescription(admetResult.amesToxicity);
+                                    return (
+                                        <AdmetMetric 
+                                            label="致突变性" 
+                                            value={admetResult.amesToxicity === 0 ? 100 : 0}
+                                            unit=""
+                                            icon="dna"
+                                            color={amesDesc.color}
+                                            description={`Ames ${amesDesc.status} - ${amesDesc.description}`}
+                                        />
+                                    );
+                                })()}
+                                
+                                {(() => {
+                                    const liverDesc = getLiverToxicityDescription(admetResult.liverToxicity);
+                                    return (
+                                        <AdmetMetric 
+                                            label="肝脏安全性" 
+                                            value={admetResult.liverToxicity === 0 ? 100 : 0}
+                                            unit=""
+                                            icon="water"
+                                            color={liverDesc.color}
+                                            description={`${liverDesc.status} - ${liverDesc.description}`}
+                                        />
+                                    );
+                                })()}
+                                
+                                {(() => {
+                                    const absorptionDesc = getAbsorptionDescription(admetResult.absorption);
+                                    const absorptionValue = admetResult.absorption !== null && admetResult.absorption !== undefined
+                                        ? admetResult.absorption * 100
+                                        : 80;
+                                    return (
+                                        <AdmetMetric 
+                                            label="吸收性" 
+                                            value={absorptionValue}
+                                            unit="%"
+                                            icon="arrow-up-bold"
+                                            color={absorptionDesc.color}
+                                            description={`${absorptionDesc.level} - ${absorptionDesc.description}`}
+                                        />
+                                    );
+                                })()}
+                                
+                                {(() => {
+                                    const metabolismDesc = getMetabolismDescription(admetResult.metabolism);
+                                    const metabolismValue = admetResult.metabolism !== null && admetResult.metabolism !== undefined
+                                        ? admetResult.metabolism * 100
+                                        : 75;
+                                    return (
+                                        <AdmetMetric 
+                                            label="代谢稳定性" 
+                                            value={metabolismValue}
+                                            unit="%"
+                                            icon="chart-line"
+                                            color={metabolismDesc.color}
+                                            description={`${metabolismDesc.level} - ${metabolismDesc.description}`}
+                                        />
+                                    );
+                                })()}
                             </View>
-                        ))}
-                    </View>
+                            
+                            <Text style={styles.admetTimestamp}>
+                                预测时间: {new Date(admetResult.updatedAt).toLocaleString('zh-CN')}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
-                {/* 4. AI 决策建议 */}
+                {/* 5. AI 决策建议 */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <MaterialCommunityIcons name="brain" size={24} color={theme.colors.primary} />
-                        <Text style={styles.sectionTitle}>AI 决策建议</Text>
+                        <Text style={styles.sectionTitle}>专家建议</Text>
                     </View>
                     <View style={styles.adviceCard}>
                         <Text style={styles.adviceText}>{result.expertAdvice}</Text>
                     </View>
                 </View>
 
-                {/* 5. 报告信息 */}
+                {/* 6. 报告信息 */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <MaterialCommunityIcons name="information-outline" size={24} color={theme.colors.primary} />
@@ -249,7 +395,7 @@ export default function ReportScreen({ route, navigation }: Props) {
                     </View>
                 </View>
 
-                {/* 6. 导出按钮 */}
+                {/* 7. 导出按钮 */}
                 <TouchableOpacity style={styles.exportButton} activeOpacity={0.8}>
                     <MaterialCommunityIcons name="download" size={20} color="white" style={{ marginRight: 8 }} />
                     <Text style={styles.exportButtonText}>导出 PDF 报告</Text>
@@ -320,6 +466,34 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
     <View style={styles.infoRow}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value}</Text>
+    </View>
+);
+
+// ADMET 指标组件
+const AdmetMetric = ({ 
+    label, 
+    value, 
+    unit, 
+    icon, 
+    color, 
+    description 
+}: { 
+    label: string; 
+    value: number; 
+    unit: string; 
+    icon: string; 
+    color: string; 
+    description: string;
+}) => (
+    <View style={styles.admetMetricBox}>
+        <View style={styles.admetMetricHeader}>
+            <MaterialCommunityIcons name={icon as any} size={24} color={color} />
+            <Text style={styles.admetMetricLabel}>{label}</Text>
+        </View>
+        <Text style={[styles.admetMetricValue, { color }]}>
+            {value.toFixed(0)}{unit}
+        </Text>
+        <Text style={styles.admetMetricDesc}>{description}</Text>
     </View>
 );
 
@@ -487,6 +661,36 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
     },
+    goodTag: {
+        backgroundColor: '#E8F5E9',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        marginRight: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#81C784',
+    },
+    goodTagText: {
+        fontSize: 13,
+        color: '#2E7D32',
+        fontWeight: '500',
+    },
+    badTag: {
+        backgroundColor: '#FFF3E0',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        marginRight: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#FFB74D',
+    },
+    badTagText: {
+        fontSize: 13,
+        color: '#E65100',
+        fontWeight: '500',
+    },
     tag: {
         backgroundColor: '#E3F2FD',
         paddingHorizontal: 12,
@@ -551,6 +755,135 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    // ADMET 预测样式
+    admetPlaceholder: {
+        backgroundColor: '#FFF3E0',
+        borderRadius: 16,
+        padding: 24,
+        alignItems: 'center',
+        borderStyle: 'dashed',
+        borderWidth: 2,
+        borderColor: '#FFE0B2',
+    },
+    placeholderText: {
+        marginTop: 12,
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: theme.colors.text.secondary,
+    },
+    predictButton: {
+        backgroundColor: '#FF6F00',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 20,
+        marginTop: 16,
+    },
+    predictButtonText: {
+        color: 'white',
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    admetCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 16,
+        ...theme.shadows.card,
+    },
+    assessmentBanner: {
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 20,
+        borderWidth: 2,
+        alignItems: 'center',
+    },
+    assessmentGrade: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    assessmentScore: {
+        fontSize: 16,
+        color: theme.colors.text.primary,
+        marginBottom: 8,
+        fontWeight: '600',
+    },
+    assessmentRecommendation: {
+        fontSize: 14,
+        color: theme.colors.text.secondary,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    radarContainer: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    radarTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: theme.colors.text.primary,
+        marginBottom: 12,
+    },
+    radarPlaceholder: {
+        width: '100%',
+        height: 200,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 16,
+    },
+    radarSubtext: {
+        marginTop: 8,
+        fontSize: 12,
+        color: theme.colors.text.light,
+    },
+    radarHint: {
+        marginTop: 12,
+        fontSize: 10,
+        color: theme.colors.text.light,
+        textAlign: 'center',
+        lineHeight: 16,
+    },
+    admetMetrics: {
+        marginTop: 16,
+    },
+    admetMetricBox: {
+        backgroundColor: '#FAFAFA',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: '#4CAF50',
+    },
+    admetMetricHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    admetMetricLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.text.primary,
+        marginLeft: 8,
+    },
+    admetMetricValue: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    admetMetricDesc: {
+        fontSize: 12,
+        color: theme.colors.text.secondary,
+    },
+    admetTimestamp: {
+        fontSize: 11,
+        color: theme.colors.text.light,
+        textAlign: 'center',
+        marginTop: 12,
+        fontStyle: 'italic',
     },
     // 熔断样式
     vetoContainer: {

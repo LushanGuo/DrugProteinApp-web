@@ -28,6 +28,13 @@ export const theme = {
             shadowRadius: 6,
             elevation: 3, // Android 阴影
         },
+        soft: {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 4,
+            elevation: 2,
+        },
         strong: {
             shadowColor: '#004D40',
             shadowOffset: { width: 0, height: 4 },

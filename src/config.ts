@@ -50,8 +50,8 @@ export const config = configs[CURRENT_ENV];
 
 // 导出环境信息
 export const currentEnvironment = CURRENT_ENV;
-export const isDevelopment = CURRENT_ENV === 'development';
-export const isProduction = CURRENT_ENV === 'production';
+export const isDevelopment = (CURRENT_ENV as string) === 'development';
+export const isProduction = (CURRENT_ENV as string) === 'production';
 
 // 动态设置 IP（用于设置页面）
 export const setCustomIP = (ip: string) => {

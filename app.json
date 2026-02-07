@@ -6,38 +6,38 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMotionUsageDescription": "此应用需要访问设备运动传感器以提供AR分子查看体验"
+      }
     },
     "android": {
-      "package": "com.drugscreen.platform",
+      "package": "com.drugscreen.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "permissions": [
+        "android.permission.BODY_SENSORS"
+      ]
     },
-    "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 24,
-            "usesCleartextTraffic": true
-          }
-        }
-      ],
-      "expo-font"
-    ],
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "允许DrugScreenApp访问设备运动传感器以提供AR分子查看体验"
+        }
+      ]
+    ]
   }
 }
