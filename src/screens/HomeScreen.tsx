@@ -78,7 +78,7 @@ export default function HomeScreen({ navigation }: Props) {
             <View style={styles.headerBg}>
                 <View style={styles.headerContent}>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.appTitle}>乳腺癌药物筛选平台</Text>
+                        <Text style={styles.appTitle}>药物筛选平台</Text>
                         <Text style={styles.appSubtitle}>Target: CDK2 / 1e9h</Text>
                     </View>
                     <View style={styles.countBadge}>

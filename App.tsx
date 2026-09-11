@@ -10,6 +10,7 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import DetailScreen from './src/screens/DetailScreen';
 import ReportScreen from './src/screens/ReportScreen';
+import AdvancedAnalysisScreen from './src/screens/AdvancedAnalysisScreen';
 import { RootStackParamList } from './src/types';
 import { getUserToken } from './src/utils/storage';
 
@@ -58,6 +59,7 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Detail" component={DetailScreen} />
         <Stack.Screen name="Report" component={ReportScreen} />
+        <Stack.Screen name="AdvancedAnalysis" component={AdvancedAnalysisScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

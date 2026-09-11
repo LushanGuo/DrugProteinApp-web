@@ -400,6 +400,16 @@ export default function ReportScreen({ route, navigation }: Props) {
                     <MaterialCommunityIcons name="download" size={20} color="white" style={{ marginRight: 8 }} />
                     <Text style={styles.exportButtonText}>导出 PDF 报告</Text>
                 </TouchableOpacity>
+
+                {/* 8. 高级分析入口（新增功能，不影响原有报告内容） */}
+                <TouchableOpacity
+                    style={styles.advancedAnalysisButton}
+                    onPress={() => navigation.navigate('AdvancedAnalysis', { compoundId, compoundName })}
+                    activeOpacity={0.8}
+                >
+                    <MaterialCommunityIcons name="atom" size={20} color="white" style={{ marginRight: 8 }} />
+                    <Text style={styles.exportButtonText}>高级分析（9大模块）</Text>
+                </TouchableOpacity>
             </ScrollView>
         </View>
     );
@@ -755,6 +765,17 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    advancedAnalysisButton: {
+        backgroundColor: '#9C27B0',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 30,
+        marginTop: 12,
+        marginBottom: 24,
+        ...theme.shadows.strong,
     },
     // ADMET 预测样式
     admetPlaceholder: {

@@ -48,5 +48,6 @@ export type RootStackParamList = {
     Home: undefined;
     Detail: { compound: Compound };
     Report: { compoundId: number; compoundName: string };
+    AdvancedAnalysis: { compoundId: number; compoundName: string };
 };
 
